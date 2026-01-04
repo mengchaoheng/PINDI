@@ -1,0 +1,7 @@
+
+*.asv
+results/*
+!results/.gitkeep
+/data
+data.zip
+.DS_Store

@@ -1,0 +1,82 @@
+I. Axis-Wise Results (Single-Axis Performance)
+
+Axis	Control Task	Result	Best Algorithm	Remarks
+Roll	Hover disturbance rejection	PINDI significantly lowest (4.06 vs 11.4 / 20.2 / 18.8)	PINDI	Lowest RMS error, statistically significant (p = 8.7e−74)
+Pitch	Hover disturbance rejection	PINDI significantly lowest (4.09 vs 11.2 / 19.3 / 20.6)	PINDI	Lowest RMS error, statistically significant (p = 5.3e−73)
+Yaw	Active tracking	INDI+INV lowest (36.0 vs 39.1 / 39.5 / 42.0)	INDI+INV	Lowest RMS error, statistically significant (p = 7.4e−70)
+
+Conclusion:
+	•	In hover disturbance rejection (Roll and Pitch), PINDI clearly outperforms the other methods;
+	•	In active tracking (Yaw), INDI+INV achieves the best performance.
+
+➡️ No single algorithm is optimal across all axes simultaneously.
+
+⸻
+
+II. Three-Axis Composite Metrics
+
+Metric	Definition	Best Algorithm	Interpretation
+Arithmetic Mean	Average error across three axes (mean accuracy)	PINDI	Lowest overall mean error
+RMS Fusion	Combined RMS energy across three axes (system energy stability)	INDI+INV	Slightly lower total energy and smoother response
+
+Interpretation:
+	•	From an average accuracy perspective, PINDI is optimal;
+	•	From a total error energy and system stability perspective, INDI+INV performs slightly better.
+
+⸻
+
+III. Error Energy Contribution (Source Analysis)
+
+Algorithm	Roll	Pitch	Yaw	Dominant Characteristic
+INDI+INV	0.085	0.081	0.834	Energy concentrated in yaw (active control axis)
+INDI+WLS	0.180	0.165	0.655	More balanced across axes
+INDI+DIR	0.155	0.184	0.661	More balanced across axes
+PINDI	0.009	0.010	0.981	Almost all energy concentrated in yaw
+
+Observations:
+	•	With PINDI, disturbance energy in Roll and Pitch is almost completely suppressed (<1%);
+	•	However, yaw error accounts for 98% of total energy, indicating concentration in the actively controlled axis.
+
+⸻
+
+IV. Normalized Results (Scale-Invariant Comparison)
+
+Metric	Best Algorithm	Interpretation
+Normalized Mean	PINDI	Best average accuracy
+Normalized RMS	INDI+INV (slightly lower)	More stable energy distribution
+
+
+⸻
+
+V. Overall Assessment (Final Evaluation)
+
+Evaluation Aspect	Best Algorithm	Technical Basis
+Roll disturbance rejection	PINDI	Lowest RMS with strong statistical significance
+Pitch disturbance rejection	PINDI	Lowest RMS with strong statistical significance
+Yaw tracking	INDI+INV	Lowest RMS with strong statistical significance
+Average error (Arithmetic mean)	PINDI	Lowest overall mean error
+Energy stability (RMS fusion)	INDI+INV	Lowest total error energy
+
+
+⸻
+
+VI. Concluding Statement (Formal Technical Expression)
+
+Based on statistical analysis, PINDI demonstrates superior performance in the roll and pitch channels, achieving the lowest RMS errors and the highest overall accuracy.
+However, in the yaw channel, which corresponds to an active tracking task, INDI+INV exhibits significantly lower RMS error and improved energy stability.
+
+Therefore:
+	•	From the perspective of average accuracy, PINDI can be regarded as the optimal solution;
+	•	From the perspective of system energy and dynamic stability, INDI+INV shows superior performance.
+
+Conclusion:
+It is not appropriate to claim that “PINDI is universally optimal.”
+Its superiority holds under hover disturbance rejection and average accuracy metrics, but not under all control objectives.
+
+⸻
+
+Summary
+
+PINDI achieves significantly improved disturbance rejection and average accuracy in hover conditions, while INDI+INV provides lower error and better stability in active yaw tracking.
+Overall system performance therefore exhibits dimension-dependent optimality, rather than a single control algorithm being dominant in all aspects.
+

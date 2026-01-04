@@ -1,0 +1,611 @@
+diff --git a/.gitignore b/.gitignore
+index f1dd958..25e3070 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -28,4 +28,8 @@ models/boat/boat.sdf
+ models/typhoon_h480/typhoon_h480.sdf
+ models/depth_camera/depth_camera.sdf
+ models/standard_vtol_drop/standard_vtol_drop.sdf
++models/ductedfan2/ductedfan2.sdf
++models/ductedfan4/ductedfan4.sdf
+ models/tailsitter/tailsitter.sdf
++models/ductedfan6/ductedfan6.sdf
++models/ductedfan_mini/ductedfan_mini.sdf
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index cb5913f..3143be2 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -345,6 +345,7 @@ add_library(sensor_msgs SHARED ${SEN_PROTO_SRCS})
+ link_libraries(mav_msgs nav_msgs std_msgs sensor_msgs)
+ link_libraries(physics_msgs)
+ 
++add_library(torque_disturbance_plugin SHARED src/torque_disturbance_plugin.cpp)
+ add_library(gazebo_airspeed_plugin SHARED src/gazebo_airspeed_plugin.cpp)
+ add_library(gazebo_camera_manager_plugin SHARED src/gazebo_camera_manager_plugin.cpp)
+ add_library(gazebo_gps_plugin SHARED src/gazebo_gps_plugin.cpp)
+@@ -372,6 +373,7 @@ add_library(gazebo_airship_dynamics_plugin SHARED src/gazebo_airship_dynamics_pl
+ add_library(gazebo_drop_plugin SHARED src/gazebo_drop_plugin.cpp)
+ 
+ set(plugins
++  torque_disturbance_plugin
+   gazebo_airspeed_plugin
+   gazebo_camera_manager_plugin
+   gazebo_gps_plugin
+diff --git a/include/gazebo_motor_model.h b/include/gazebo_motor_model.h
+index 56072d3..f2dbbe9 100644
+--- a/include/gazebo_motor_model.h
++++ b/include/gazebo_motor_model.h
+@@ -138,6 +138,7 @@ class GazeboMotorModel : public MotorModel, public ModelPlugin {
+   double time_constant_up_;
+ 
+   bool reversible_;
++  bool fly;
+ 
+   transport::NodePtr node_handle_;
+   transport::PublisherPtr motor_velocity_pub_;
+diff --git a/include/liftdrag_plugin/liftdrag_plugin.h b/include/liftdrag_plugin/liftdrag_plugin.h
+index b5ea0e8..b77b971 100644
+--- a/include/liftdrag_plugin/liftdrag_plugin.h
++++ b/include/liftdrag_plugin/liftdrag_plugin.h
+@@ -146,6 +146,16 @@ namespace gazebo
+     private: std::string namespace_;
+     private: std::string wind_sub_topic_ = "world_wind";
+     private: ignition::math::Vector3d wind_vel_;
++
++    private: bool HasPropellerWind_;
++
++    private: bool is_wind_just_inside_;
++
++    private: std::vector<physics::JointPtr> propeller_joint_;
++
++    private: std::vector<double> propeller_wind_constant_;
++
++    private: int num_of_propeller_;
+   };
+ }
+ #endif
+diff --git a/include/torque_disturbance_plugin.hh b/include/torque_disturbance_plugin.hh
+new file mode 100644
+index 0000000..2ecfbb1
+--- /dev/null
++++ b/include/torque_disturbance_plugin.hh
+@@ -0,0 +1,36 @@
++#ifndef _TORQUE_DISTURBANCE_PLUGIN_HH_
++#define _TORQUE_DISTURBANCE_PLUGIN_HH_
++
++#include <gazebo/gazebo.hh>
++#include <gazebo/physics/physics.hh>
++#include <gazebo/common/common.hh>
++#include <string>
++
++namespace gazebo
++{
++class TorqueDisturbancePlugin : public ModelPlugin
++{
++public:
++  TorqueDisturbancePlugin();
++  virtual ~TorqueDisturbancePlugin();
++
++  void Load(physics::ModelPtr _model, sdf::ElementPtr _sdf);
++  void OnUpdate();
++
++private:
++  physics::ModelPtr model_;
++  physics::LinkPtr link_;
++  event::ConnectionPtr update_connection_;
++
++  std::string link_name_;
++  double amplitude_x_, amplitude_y_, amplitude_z_;
++  double frequency_x_, frequency_y_, frequency_z_;
++
++  double bias_x_, bias_y_, bias_z_;  // 新增：三轴常值偏置
++  common::Time start_time_;
++  double start_time_sec_;  // 新增：扰动开始时间（秒）
++  double running_time_sec_;
++};
++}
++
++#endif
+diff --git a/src/gazebo_mavlink_interface.cpp b/src/gazebo_mavlink_interface.cpp
+index c51ec5c..4208915 100644
+--- a/src/gazebo_mavlink_interface.cpp
++++ b/src/gazebo_mavlink_interface.cpp
+@@ -1108,6 +1108,7 @@ void GazeboMavlinkInterface::handle_actuator_controls() {
+   input_reference_.resize(n_out_max);
+ 
+   Eigen::VectorXd actuator_controls = mavlink_interface_->GetActuatorControls();
++  // gzdbg << "actuator_controls: " << actuator_controls << "\n";  // [-1, 1] //src/modules/simulator/simulator_mavlink.cpp
+   if (actuator_controls.size() < n_out_max) return; //TODO: Handle this properly
+   for (int i = 0; i < input_reference_.size(); i++) {
+     if (armed) {
+diff --git a/src/gazebo_motor_model.cpp b/src/gazebo_motor_model.cpp
+index e789bb0..d0b47b5 100644
+--- a/src/gazebo_motor_model.cpp
++++ b/src/gazebo_motor_model.cpp
+@@ -135,6 +135,7 @@ void GazeboMotorModel::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf) {
+   getSdfParam<double>(_sdf, "timeConstantUp", time_constant_up_, time_constant_up_);
+   getSdfParam<double>(_sdf, "timeConstantDown", time_constant_down_, time_constant_down_);
+   getSdfParam<double>(_sdf, "rotorVelocitySlowdownSim", rotor_velocity_slowdown_sim_, 10);
++  fly=false;
+ 
+   /*
+   std::cout << "Subscribing to: " << motor_test_sub_topic_ << std::endl;
+@@ -241,6 +242,23 @@ void GazeboMotorModel::UpdateForcesAndMoments() {
+   ignition::math::Pose3d pose_difference = ignitionFromGazeboMath(link_->GetWorldCoGPose() - parent_links.at(0)->GetWorldCoGPose());
+ #endif
+   ignition::math::Vector3d drag_torque(0, 0, -turning_direction_ * force * moment_constant_);
++  // ignition::math::Vector3d drag_torque(0, 0, 0);
++  // if(real_motor_velocity>1250)
++  // {
++  //   fly=true;
++  // }
++  // if(real_motor_velocity<500)
++  // {
++  //   fly=false;
++  // }
++  // if(fly)
++  // {
++  //   drag_torque[2]=-0.25;
++  // }
++  // else
++  // {
++  //   drag_torque[2]= -turning_direction_ * force * moment_constant_;
++  // }
+   // Transforming the drag torque into the parent frame to handle arbitrary rotor orientations.
+   ignition::math::Vector3d drag_torque_parent_frame = pose_difference.Rot().RotateVector(drag_torque);
+   parent_links.at(0)->AddRelativeTorque(drag_torque_parent_frame);
+@@ -277,6 +295,22 @@ void GazeboMotorModel::UpdateForcesAndMoments() {
+ #else
+   joint_->SetVelocity(0, turning_direction_ * ref_motor_rot_vel / rotor_velocity_slowdown_sim_);
+ #endif /* if 0 */
++  // debug
++  if (0)
++  {
++    gzdbg << "motor_rot_vel_: " << motor_rot_vel_ << "\n";
++    gzdbg << "real_motor_velocity: " << real_motor_velocity << "\n";
++    gzdbg << "force * scalar: " << force * scalar << "\n";
++    gzdbg << "air_drag: " << air_drag << "\n";
++    gzdbg << "drag_torque: " << drag_torque << "\n";
++    gzdbg << "rolling_moment: " << rolling_moment << "\n";
++    gzdbg << "rolling_moment_coefficient_: " << rolling_moment_coefficient_ << "\n";
++    gzdbg << "rotor_drag_coefficient_: " << rotor_drag_coefficient_ << "\n";
++    gzdbg << "motor_constant_: " << motor_constant_ << "\n";
++    gzdbg << "moment_constant_: " << moment_constant_ << "\n";
++    gzdbg << "scalar: " << scalar << "\n";
++
++  }
+ }
+ 
+ void GazeboMotorModel::UpdateMotorFail() {
+diff --git a/src/liftdrag_plugin/liftdrag_plugin.cpp b/src/liftdrag_plugin/liftdrag_plugin.cpp
+index 30da825..dd31040 100644
+--- a/src/liftdrag_plugin/liftdrag_plugin.cpp
++++ b/src/liftdrag_plugin/liftdrag_plugin.cpp
+@@ -154,9 +154,9 @@ void LiftDragPlugin::Load(physics::ModelPtr _model,
+           boost::bind(&LiftDragPlugin::OnUpdate, this));
+     }
+ 
+-    
++
+   }
+-  
++
+   if (_sdf->HasElement("robotNamespace"))
+   {
+     namespace_ = _sdf->GetElement("robotNamespace")->Get<std::string>();
+@@ -181,6 +181,65 @@ void LiftDragPlugin::Load(physics::ModelPtr _model,
+     }
+   }
+ 
++  if (_sdf->HasElement("num_of_propeller") && _sdf->HasElement("wind_from_propeller"))
++  {
++    this->num_of_propeller_ = _sdf->Get<int>("num_of_propeller");
++    this->propeller_joint_.resize(this->num_of_propeller_);
++    this->propeller_wind_constant_.resize(this->num_of_propeller_);
++    sdf::ElementPtr wind_from_propeller = _sdf->GetElement("wind_from_propeller");
++    sdf::ElementPtr propeller = wind_from_propeller->GetElement("propeller");
++    while (propeller)
++    {
++      if (propeller->HasElement("propeller_index"))
++      {
++        int index = propeller->Get<int>("propeller_index");
++        if (index < this->num_of_propeller_)
++        {
++          if (propeller->HasElement("propeller_joint"))
++          {
++            std::string propeller_joint = propeller->Get<std::string>("propeller_joint");
++            this->propeller_joint_[index] = this->model->GetJoint(propeller_joint);
++            if (!this->propeller_joint_[index])
++            {
++              gzerr << "propeller_joint_[" << index << "] with name" << propeller_joint <<" does not exist.\n";
++            }
++          }
++          else
++          {
++            gzwarn << "propeller_joint_[" << index << "] not specified.\n";
++          }
++          if (propeller->HasElement("propeller_wind_constant"))
++          {
++            this->propeller_wind_constant_[index] = propeller->Get<double>("propeller_wind_constant");
++          }
++          else
++          {
++            this->propeller_wind_constant_[index] = 0.1;
++            gzwarn << "propeller_wind_constant not specified, use defualt value.\n";
++          }
++        }
++        else
++        {
++          gzerr << "index[" << index << "] out of range, not parsing.\n";
++        }
++      }
++      else
++      {
++        gzerr << "no index, not parsing.\n";
++        break;
++      }
++      propeller = propeller->GetNextElement("propeller");
++    }
++    this->HasPropellerWind_=true;
++  }
++  else
++  {
++    this->HasPropellerWind_=false;
++  }
++
++  if (_sdf->HasElement("is_wind_just_inside"))
++    this->is_wind_just_inside_ = _sdf->Get<double>("is_wind_just_inside");
++
+   if (_sdf->HasElement("control_joint_rad_to_cl"))
+     this->controlJointRadToCL = _sdf->Get<double>("control_joint_rad_to_cl");
+ }
+@@ -195,18 +254,54 @@ void LiftDragPlugin::OnUpdate()
+ #else
+   ignition::math::Vector3d vel = ignitionFromGazeboMath(this->link->GetWorldLinearVel(this->cp)) - wind_vel_;
+ #endif
+-  ignition::math::Vector3d velI = vel;
+-  velI.Normalize();
+-
+-  if (vel.Length() <= 0.01)
+-    return;
+-
+   // pose of body
+ #if GAZEBO_MAJOR_VERSION >= 9
+   ignition::math::Pose3d pose = this->link->WorldPose();
+ #else
+   ignition::math::Pose3d pose = ignitionFromGazeboMath(this->link->GetWorldPose());
+ #endif
++  ignition::math::Vector3d W_PI = ignition::math::Vector3d(0, 0, 0);
++  if(this->HasPropellerWind_)
++  {
++    ignition::math::Vector3d W_P=ignition::math::Vector3d(0, 0, 0);
++    // pose of body of propeller_link
++    for (int i=0;i<this->num_of_propeller_;++i)
++    {
++      ignition::math::Pose3d pose_propeller = this->propeller_joint_[i]->WorldPose();
++      //if (i==1)
++        // gzdbg << "pose_propeller: [" << pose_propeller -pose<<"]\n";
++      double propellerRad = this->propeller_joint_[i]->GetVelocity(0); // Multiply rotorVelocitySlowdownSim to get the real V
++      //gzdbg << "propellerRad: [" << propellerRad<<"]\n";
++      ignition::math::Vector3d propeller_rotation= this->propeller_joint_[i]->LocalAxis(0);//
++      // gzdbg << "propeller_rotation: [" << propeller_rotation<<"]\n";
++      double wind_by_propeller = this->propeller_wind_constant_[i] * std::abs(propellerRad); // V_e = k_v * Omega, propeller_wind_constant_ == k_v
++      W_P = propeller_rotation * wind_by_propeller;
++      W_PI += pose_propeller.Rot().RotateVector(W_P); // W_PI == velInLDPlane == speedInLDPlane == V_e
++      // W_PI += pose.Rot().RotateVector(W_P); // ToDo: diff is pose of joint and parent pose
++    }
++    if(this->is_wind_just_inside_)
++    {
++      // gzdbg << "before add wind: [" << vel<<"]\n";
++      // gzdbg << "W_PI: [" << W_PI<<"]\n";
++      ignition::math::Vector3d vel_b=pose.Rot().RotateVectorReverse(vel);
++      // gzdbg << "vel_b: [" << vel_b<<"]\n";
++      ignition::math::Vector3d wind_in_to_ductedfan_b = ignition::math::Vector3d(0, 0, vel_b.Z());
++      // gzdbg << "wind_in_to_ductedfan_b: [" << wind_in_to_ductedfan_b<<"]\n";
++      // vel = pose.Rot().RotateVector(wind_in_to_ductedfan_b) + W_PI; // for ductedfan. ToDo: How to use vel?
++      // gzdbg << "wind_vel_: [" << wind_vel_<<"]\n";
++      vel = W_PI;
++    }
++    else
++    {
++      vel += W_PI;
++    }
++  }
++  ignition::math::Vector3d velI = vel;
++  velI.Normalize();
++
++  if (vel.Length() <= 0.01)
++    return;
++
+ 
+   // rotate forward and upward vectors into inertial frame
+   ignition::math::Vector3d forwardI = pose.Rot().RotateVector(this->forward);
+@@ -239,6 +334,7 @@ void LiftDragPlugin::OnUpdate()
+       spanwiseI.Dot(velI), minRatio, maxRatio);
+ 
+   this->sweep = asin(sinSweepAngle);
++  // gzdbg << "sinSweepAngle: [" << sinSweepAngle <<"]\n";
+ 
+   // truncate sweep to within +/-90 deg
+   while (fabs(this->sweep) > 0.5 * M_PI)
+@@ -292,7 +388,13 @@ void LiftDragPlugin::OnUpdate()
+ 
+   // compute dynamic pressure
+   double speedInLDPlane = velInLDPlane.Length();
++  // gzdbg << "speedInLDPlane: [" << speedInLDPlane<<"]\n";
+   double q = 0.5 * this->rho * speedInLDPlane * speedInLDPlane;
++  // (controlJointRadToCL * 0.5 * this->rho * area) * (speedInLDPlane * speedInLDPlane) * (controlAngle) == F,
++  // (controlJointRadToCL * 0.5 * this->rho * area) == k_cv, controlJointRadToCL * 0.5 * 1.2041 * 0.0018 == 0.0073
++  // propeller_wind_constant_ == k_v == 0.0169
++  // st. k_cv * k_v^2 == a const value
++  //std::cout << "real_motor_velocity: " << real_motor_velocity << std::endl;
+ 
+   // compute cl at cp, check for stall, correct for sweep
+   double cl;
+@@ -329,8 +431,13 @@ void LiftDragPlugin::OnUpdate()
+   }
+ 
+   // compute lift force at cp
+-  ignition::math::Vector3d lift = cl * q * this->area * liftI;
+-
++  // ignition::math::Vector3d lift = cl * q * this->area * liftI;
++  ignition::math::Vector3d lift = 3.0 * controlAngle * liftI;
++  // gzdbg << "liftI: " << liftI << "\n";
++  // gzdbg << "B_k: " << (cl * q * this->area)/(controlAngle*speedInLDPlane * speedInLDPlane) << "\n"; // (cl * q * this->area)/(controlAngle*speedInLDPlane * speedInLDPlane) =0.00729995, (cl * q * this->area)/controlAngle=3
++  // gzdbg << "B_k1: " << (cl * q * this->area)/(controlAngle) << "\n";
++  // ignition::math::Vector3d lift_b=pose.Rot().RotateVectorReverse(liftI);
++  // gzdbg << "Link: [" << this->controlJoint->GetName() << "] lift_b: " << lift_b << "\n";
+   // compute cd at cp, check for stall, correct for sweep
+   double cd;
+   if (this->alpha > this->alphaStall)
+@@ -412,7 +519,7 @@ void LiftDragPlugin::OnUpdate()
+           << cd << " cda: " << this->cda << "\n";
+     gzdbg << "moment: " << moment << "\n";
+     gzdbg << "force: " << force << "\n";
+-    gzdbg << "moment: " << moment << "\n";
++    gzdbg << "W_PI: " << W_PI << "\n";
+   }
+ 
+   // Correct for nan or inf
+diff --git a/src/torque_disturbance_plugin.cpp b/src/torque_disturbance_plugin.cpp
+new file mode 100644
+index 0000000..a93c68e
+--- /dev/null
++++ b/src/torque_disturbance_plugin.cpp
+@@ -0,0 +1,104 @@
++#include "torque_disturbance_plugin.hh"
++#include <ignition/math/Vector3.hh>
++
++namespace gazebo
++{
++GZ_REGISTER_MODEL_PLUGIN(TorqueDisturbancePlugin)
++
++TorqueDisturbancePlugin::TorqueDisturbancePlugin()
++{
++}
++
++TorqueDisturbancePlugin::~TorqueDisturbancePlugin()
++{
++}
++
++void TorqueDisturbancePlugin::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf)
++{
++  this->model_ = _model;
++  this->start_time_ = this->model_->GetWorld()->SimTime();
++
++  if (_sdf->HasElement("link_name"))
++    this->link_name_ = _sdf->Get<std::string>("link_name");
++  else
++    gzerr << "[TorqueDisturbancePlugin] Missing <link_name>\n";
++
++  if (_sdf->HasElement("amplitude_x"))
++    this->amplitude_x_ = _sdf->Get<double>("amplitude_x");
++
++  else
++    this->amplitude_x_ = 0.0;
++
++  if (_sdf->HasElement("amplitude_y"))
++    this->amplitude_y_ = _sdf->Get<double>("amplitude_y");
++
++  else
++    this->amplitude_y_ = 0.0;
++
++  if (_sdf->HasElement("amplitude_z"))
++    this->amplitude_z_ = _sdf->Get<double>("amplitude_z");
++
++  else
++    this->amplitude_z_ = 0.0;
++
++  if (_sdf->HasElement("frequency_x"))
++    this->frequency_x_ = _sdf->Get<double>("frequency_x");
++  else
++    this->frequency_x_ = 1.0;
++
++  if (_sdf->HasElement("frequency_y"))
++    this->frequency_y_ = _sdf->Get<double>("frequency_y");
++  else
++    this->frequency_y_ = 1.0;
++
++  if (_sdf->HasElement("frequency_z"))
++    this->frequency_z_ = _sdf->Get<double>("frequency_z");
++  else
++    this->frequency_z_ = 1.0;
++
++  if (_sdf->HasElement("start_time"))
++    this->start_time_sec_ = _sdf->Get<double>("start_time");
++  else
++    this->start_time_sec_ = 0.0;  // 默认立即开始扰动
++
++  if (_sdf->HasElement("running_time"))
++    this->running_time_sec_ = _sdf->Get<double>("running_time");
++  else
++    this->running_time_sec_ = 0.1;
++
++  this->link_ = this->model_->GetLink(this->link_name_);
++  if (!this->link_)
++  {
++    gzerr << "[TorqueDisturbancePlugin] Link " << this->link_name_ << " not found!\n";
++    return;
++  }
++
++  this->bias_x_ = _sdf->Get<double>("bias_x", 0.0).first;
++  this->bias_y_ = _sdf->Get<double>("bias_y", 0.0).first;
++  this->bias_z_ = _sdf->Get<double>("bias_z", 0.0).first;
++
++  this->update_connection_ = event::Events::ConnectWorldUpdateBegin(
++      std::bind(&TorqueDisturbancePlugin::OnUpdate, this));
++}
++
++void TorqueDisturbancePlugin::OnUpdate()
++{
++  common::Time current_time = this->model_->GetWorld()->SimTime();
++  double t = (current_time - this->start_time_).Double();
++
++  if (t < this->start_time_sec_ || t > this->start_time_sec_ + this->running_time_sec_)
++    return;
++
++  // 打印仿真时间（调试用）
++  if (0)
++  {
++    gzdbg << "[TorqueDisturbancePlugin] Sim time: " << t << " s\n";
++  }
++  double tau_x = this->bias_x_ + this->amplitude_x_ * sin(2.0 * M_PI * this->frequency_x_ * (t - this->start_time_sec_));
++  double tau_y = this->bias_y_ + this->amplitude_y_ * sin(2.0 * M_PI * this->frequency_y_ * (t - this->start_time_sec_));
++  double tau_z = this->bias_z_ + this->amplitude_z_ * sin(2.0 * M_PI * this->frequency_z_ * (t - this->start_time_sec_));
++
++  ignition::math::Vector3d torque(tau_x, tau_y, tau_z);
++  this->link_->AddRelativeTorque(torque);
++}
++}
+diff --git a/worlds/baylands.world b/worlds/baylands.world
+index 6e32341..149db81 100644
+--- a/worlds/baylands.world
++++ b/worlds/baylands.world
+@@ -17,6 +17,7 @@
+     </include>
+ 
+     <include>
++	  <pose>14 5 -0.5 0 0 0</pose>
+       <uri>model://baylands</uri>
+     </include>
+ 
+diff --git a/worlds/ductedfan4_hitl.world b/worlds/ductedfan4_hitl.world
+new file mode 100644
+index 0000000..338bf30
+--- /dev/null
++++ b/worlds/ductedfan4_hitl.world
+@@ -0,0 +1,54 @@
++<?xml version="1.0" ?>
++<sdf version="1.5">
++  <world name="ductedfan4_hitl_world">
++    <scene>
++      <ambient>0.7 0.7 0.7 1</ambient>
++      <background>0.7 0.7 0.7 1</background>
++      <shadows>false</shadows>
++    </scene>
++
++    <gui fullscreen='0'>
++      <camera name='user_camera'>
++        <pose>-12.0 -3.0 10.0 0 0.5 0.2</pose>
++        <view_controller>orbit</view_controller>
++        <projection_type>perspective</projection_type>
++      </camera>
++    </gui>
++
++    <include>
++      <uri>model://sun</uri>
++    </include>
++
++    <physics name='default_physics' default='0' type='ode'>
++      <gravity>0 0 -9.8066</gravity>
++      <ode>
++        <solver>
++          <type>quick</type>
++          <iters>10</iters>
++          <sor>1.3</sor>
++          <use_dynamic_moi_rescaling>0</use_dynamic_moi_rescaling>
++        </solver>
++        <constraints>
++          <cfm>0</cfm>
++          <erp>0.2</erp>
++          <contact_max_correcting_vel>100</contact_max_correcting_vel>
++          <contact_surface_layer>0.001</contact_surface_layer>
++        </constraints>
++      </ode>
++      <max_step_size>0.004</max_step_size>
++      <real_time_factor>1</real_time_factor>
++      <real_time_update_rate>250</real_time_update_rate>
++      <magnetic_field>6.0e-6 2.3e-5 -4.2e-5</magnetic_field>
++    </physics>
++    <include>
++      <uri>model://ground_plane</uri>
++    </include>
++    <include>
++      <uri>model://asphalt_plane</uri>
++    </include>
++    <include>
++      <uri>model://ductedfan4_hitl</uri>
++      <pose>1.01 0.98 0.83 0 0 1.14</pose>
++    </include>
++  </world>
++</sdf>
+diff --git a/worlds/hitl_ductedfan4.word b/worlds/hitl_ductedfan4.word
+new file mode 100644
+index 0000000..68a5254
+--- /dev/null
++++ b/worlds/hitl_ductedfan4.word
+@@ -0,0 +1,54 @@
++<?xml version="1.0" ?>
++<sdf version="1.5">
++  <world name="hitl_ductedfan4_world">
++    <scene>
++      <ambient>0.7 0.7 0.7 1</ambient>
++      <background>0.7 0.7 0.7 1</background>
++      <shadows>false</shadows>
++    </scene>
++
++    <gui fullscreen='0'>
++      <camera name='user_camera'>
++        <pose>-12.0 -3.0 10.0 0 0.5 0.2</pose>
++        <view_controller>orbit</view_controller>
++        <projection_type>perspective</projection_type>
++      </camera>
++    </gui>
++
++    <include>
++      <uri>model://sun</uri>
++    </include>
++
++    <physics name='default_physics' default='0' type='ode'>
++      <gravity>0 0 -9.8066</gravity>
++      <ode>
++        <solver>
++          <type>quick</type>
++          <iters>10</iters>
++          <sor>1.3</sor>
++          <use_dynamic_moi_rescaling>0</use_dynamic_moi_rescaling>
++        </solver>
++        <constraints>
++          <cfm>0</cfm>
++          <erp>0.2</erp>
++          <contact_max_correcting_vel>100</contact_max_correcting_vel>
++          <contact_surface_layer>0.001</contact_surface_layer>
++        </constraints>
++      </ode>
++      <max_step_size>0.004</max_step_size>
++      <real_time_factor>1</real_time_factor>
++      <real_time_update_rate>250</real_time_update_rate>
++      <magnetic_field>6.0e-6 2.3e-5 -4.2e-5</magnetic_field>
++    </physics>
++    <include>
++      <uri>model://ground_plane</uri>
++    </include>
++    <include>
++      <uri>model://asphalt_plane</uri>
++    </include>
++    <include>
++      <uri>model://ductedfan4_hitl</uri>
++      <pose>1.01 0.98 0.83 0 0 1.14</pose>
++    </include>
++  </world>
++</sdf>

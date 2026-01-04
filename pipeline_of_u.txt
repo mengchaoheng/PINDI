@@ -1,0 +1,20 @@
+In code:
+allocation_value.u[i] = _u[i];  -> _u_estimate[i] = first_order_update_zoh(_u[i]) -> 
+1)in simulation, _u_cmd[i] = _u_estimate[i]; _u_estimate is the real value of control input.
+2)in real-world flight test, _u_cmd[i] = _u[i]; _u_estimate is output of A_a.
+-> outputs = (_u_cmd - _dist_mag)/0.3491f; ([-1,1] rad) -> 
+output_limit_calc( outputs, _current_output_value ) (pwm) -> 
+actuator_outputs.output[i] = _current_output_value[i]; (pwm) -> 
+
+
+In paper:
+Allocator output or allocation result is u_ca ≜ allocation_value.u[i] = _u[i];  ->  _u_estimate[i] = first_order_update_zoh(_u[i]) -> 
+1)in simulation, _u_cmd[i] = _u_estimate[i] ≜ u; 
+2)in real-world flight test, _u_cmd[i] = _u[i] ≜ u_ca ; _u_estimate is output of A_a.
+
+-> outputs = (_u_cmd - _dist_mag)/0.3491f; (\in [-1,1] rad). in simulation, _dist_mag is added to real u, while in real-world flight test, _dist_mag is added to u_ca  -> 
+output_limit_calc( outputs, _current_output_value ) (pwm) -> 
+actuator_outputs.output[i] = _current_output_value[i]; (pwm) -> 
+
+The u_0 used by INDI is always based on an estimated value, which is the true value in simulations and the estimated value of the actuator position in real-world flight test:
+actuator_outputs_value.delta[i] = math::constrain(_lp_filter_actuator[i].apply(_u_estimate[i]), (float) (_uMin[i]), (float) (_uMax[i]));  ≜ \hat{u}_0
