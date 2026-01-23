@@ -1,23 +1,5 @@
 # PINDI
 
-## Reference
-If our repo helps your academic projects, please cite the following publication:
-
-[1] C. Meng, H. Pei, Z. Cheng, and P. Huang, “Priority-enhanced INDI for over-actuated systems: stability and robustness analysis,” Aerospace Science and Technology, p. 111624, 2026, doi: https://doi.org/10.1016/j.ast.2026.111624.
-
-```
-@article{MENG2026111624,
-title = {Priority-enhanced INDI for over-actuated systems: stability and robustness analysis},
-journal = {Aerospace Science and Technology},
-pages = {111624},
-year = {2026},
-issn = {1270-9638},
-doi = {https://doi.org/10.1016/j.ast.2026.111624},
-url = {https://www.sciencedirect.com/science/article/pii/S1270963826000052},
-author = {Chaoheng Meng and Hailong Pei and Zihuan Cheng and Peiye Huang}
-}
-```
-
 ## About  
 Priority-enhanced INDI (PINDI) is an INDI-based control scheme for over-actuated systems, in which performance enhancement is achieved through prioritized control allocation (PCA).
 
@@ -38,6 +20,23 @@ The full code of PINDI can also be found in the [DFUAV project](https://github.c
   <em>Block diagram of the closed-loop system under the PINDI controller.</em>
 </p>
 
+## Reference
+If our repo helps your academic projects, please cite the following publication:
+
+[1] C. Meng, H. Pei, Z. Cheng, and P. Huang, “Priority-enhanced INDI for over-actuated systems: stability and robustness analysis,” Aerospace Science and Technology, p. 111624, 2026, doi: https://doi.org/10.1016/j.ast.2026.111624.
+
+```
+@article{MENG2026111624,
+title = {Priority-enhanced INDI for over-actuated systems: stability and robustness analysis},
+journal = {Aerospace Science and Technology},
+pages = {111624},
+year = {2026},
+issn = {1270-9638},
+doi = {https://doi.org/10.1016/j.ast.2026.111624},
+url = {https://www.sciencedirect.com/science/article/pii/S1270963826000052},
+author = {Chaoheng Meng and Hailong Pei and Zihuan Cheng and Peiye Huang}
+}
+```
 
 # Usage
 
