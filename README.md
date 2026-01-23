@@ -1,4 +1,24 @@
-# 1. About  
+# PINDI
+
+## Reference
+If our repo helps your academic projects, please cite the following publication:
+
+[1] C. Meng, H. Pei, Z. Cheng, and P. Huang, “Priority-enhanced INDI for over-actuated systems: stability and robustness analysis,” Aerospace Science and Technology, p. 111624, 2026, doi: https://doi.org/10.1016/j.ast.2026.111624.
+
+```
+@article{MENG2026111624,
+title = {Priority-enhanced INDI for over-actuated systems: stability and robustness analysis},
+journal = {Aerospace Science and Technology},
+pages = {111624},
+year = {2026},
+issn = {1270-9638},
+doi = {https://doi.org/10.1016/j.ast.2026.111624},
+url = {https://www.sciencedirect.com/science/article/pii/S1270963826000052},
+author = {Chaoheng Meng and Hailong Pei and Zihuan Cheng and Peiye Huang}
+}
+```
+
+## About  
 Priority-enhanced INDI (PINDI) is an INDI-based control scheme for over-actuated systems, in which performance enhancement is achieved through prioritized control allocation (PCA).
 
 Our open-source flight control project, the [DFUAV project](https://github.com/mengchaoheng/DuctedFanUAV-Autopilot), is forked from [PX4-Autopilot](https://github.com/PX4/PX4-Autopilot). Its main contributions include maintaining and extending multiple DFUAV-specific development branches (e.g., df-1.1x.x) and implementing a variety of control algorithms to support high-performance flight of ducted fan UAV platforms.
@@ -9,7 +29,7 @@ This work is part of the DFUAV project and includes:
 2. MATLAB source code for analyzing flight log files `xx.ulog`, the corresponding flight logs of the paper can be downloaded by clicking [download](https://drive.google.com/drive/folders/1Qt6lAV-oQqH-ZAz13f6aZQOPx-Y1A4mz?usp=sharing).
 
 
-The full code of PINDI can also be found in the [DFUAV project](https://github.com/mengchaoheng/DuctedFanUAV-Autopilot). The PCA algorithm depends on [control_allocation](https://github.com/mengchaoheng/control_allocation), which is used to draw attainable sets and test control allocation algorithms. The MATLAB source code for analyzing flight log files depends on [ulog_matlab_plot](https://github.com/mengchaoheng/ulog_matlab_plot), which is used to parse PX4 log files and generate plots in MATLAB.  
+The full code of PINDI can also be found in the [DFUAV project](https://github.com/mengchaoheng/DuctedFanUAV-Autopilot) (df-1.12.3 branch). The PCA algorithm depends on [control_allocation](https://github.com/mengchaoheng/control_allocation), which is used to draw attainable sets and test control allocation algorithms. The MATLAB source code for analyzing flight log files depends on [ulog_matlab_plot](https://github.com/mengchaoheng/ulog_matlab_plot), which is used to parse PX4 log files and generate plots in MATLAB.  
 
 <p align="center">
   <img src="assets/pindi.png" width="500">
@@ -19,10 +39,10 @@ The full code of PINDI can also be found in the [DFUAV project](https://github.c
 </p>
 
 
-# 2. Usage
+# Usage
 
 
-## 2.1. Flight-controller source code
+## Flight-controller source code
 More details can be found in `/source_code_patch/readme.md` or in the `df-1.12.3` branch of the [DFUAV project](https://github.com/mengchaoheng/DuctedFanUAV-Autopilot). This paper conducted multiple experiments, with each experiment's ulg file recording detailed contents, including code version, parameter changes, and system response. Open-source tools [flight_review](https://github.com/PX4/flight_review) can also be applied to analyze the flight logs. The detailed implementation process and parameter settings of all experiments are provided in [setting file](settings.md).
 
 Compiling the code and running the software-in-the-loop simulation is straightforward:
@@ -61,7 +81,7 @@ make px4_sitl gazebo_ductedfan4 # For start SITL simulation (gazebo-classic)
 make px4_fmu-v5 upload # For the Pixhawk 4 controller
 ```
 
-## 2.2. MATLAB plotting scripts
+## MATLAB plotting scripts
 
 1. Download data from [data](https://drive.google.com/drive/folders/1Qt6lAV-oQqH-ZAz13f6aZQOPx-Y1A4mz?usp=sharing)
 
@@ -89,9 +109,9 @@ ulog2csv_path = '~/Library/Python/3.9/bin/ulog2csv';
 * realflight5_3.m -> Figure_20-Figure_22
 * (**Additional**) test5_2_2_for_rate_loop_alone.m: Flight test with **only angular velocity loop**, corresponding to 5.2.2. The reference signal is changed to the heading angular velocity square wave signal, $\omega^{B}_{sp}=[0,0,\frac{\pi}{2}square(0.5\pi t)]^T$. The test process is the same as 5.2.2, and the results are similar to Figure_14-Figure_16
 
-# 3. Results
+# Results
 
-## 3.1 Flight test using a complete control loop
+## Flight test using a complete control loop
 
 <p align="center">
   <img src="assets/flight_control.png" width="700">
@@ -145,7 +165,7 @@ The UAV is hovered at a fixed point at a certain height, and after adding consta
 
 The running time of each part of the control strategy used for comparison on the pixhawk 4 mini controller (using STM32F765) is divided into the following three parts:
 
-1. Allocator running time (µs).
+### Allocator running time (µs).
 
 Based on the test data in above, the average running time is calculated, where the INV allocation method pre-calculates the pseudo-inverse of the control effect matrix (average running time of 8.8712 µs). If the pseudo-inverse is calculated online, the average running time is 31 µs.
 
@@ -159,7 +179,7 @@ Based on the test data in above, the average running time is calculated, where t
 > **Note:** Please note that the runtime of the allocation algorithms depends on the problem dimension, test signals, and specific implementation details, but the overall order of magnitude remains stable. We can collect data during normal flight operations and compute the average runtime. Results from real flight experiments show that the variation in execution time does not exceed the order of magnitude. That is, the pseudo-inverse method typically takes on the order of a few tens of microseconds, while optimization-based allocation methods take approximately 100–300 microseconds.
 
 
-2. Rate controller running time (us).
+### Rate controller running time (us).
 
 The INDI runtime is evaluated using `plot_setpoint_response.m` with the log file `log_43_2025-8-6-17-51-54.ulg`.
 
@@ -168,7 +188,7 @@ The INDI runtime is evaluated using `plot_setpoint_response.m` with the log file
 | PID            | 2.3653         | 
 | INDI           | 2.9966         |
 
-3. Controller+Allocator running time.
+### Controller+Allocator running time.
 
 Based on the experimental data in section 5.3, we have:
 
@@ -177,7 +197,7 @@ Based on the experimental data in section 5.3, we have:
 | INDI+INV       | 31+2.9966=34             | INDI+WLS       | 2.9966+105.4750=108       |
 | INDI+DIR       | 2.9966+207.6368=211      | PINDI          | 2.9966+171.4553=174       |
 
-## 3.2 Flight test using only angular velocity control
+## Flight test using only angular velocity control
 
 To address the reviewer's concerns, we add this section to show flight tests of only the angular velocity loop. In order to make the experiment repeatable, we use simulation as an example to demonstrate. For more information on this aspect, please refer to our other article titled "Attitude Control of Ducted Fan UAV Based on INDI and Priority Control Allocation".
 
