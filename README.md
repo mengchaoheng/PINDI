@@ -22,19 +22,25 @@ The full code of PINDI can also be found in the [DFUAV project](https://github.c
 
 ## Reference
 If our repo helps your academic projects, please cite the following publication:
-
-[1] C. Meng, H. Pei, Z. Cheng, and P. Huang, “Priority-enhanced INDI for over-actuated systems: stability and robustness analysis,” Aerospace Science and Technology, p. 111624, 2026, doi: https://doi.org/10.1016/j.ast.2026.111624.
-
 ```
-@article{MENG2026111624,
-title = {Priority-enhanced INDI for over-actuated systems: stability and robustness analysis},
-journal = {Aerospace Science and Technology},
-pages = {111624},
-year = {2026},
-issn = {1270-9638},
-doi = {https://doi.org/10.1016/j.ast.2026.111624},
-url = {https://www.sciencedirect.com/science/article/pii/S1270963826000052},
-author = {Chaoheng Meng and Hailong Pei and Zihuan Cheng and Peiye Huang}
+[1] C. Meng, H. Pei, Z. Cheng, P. Huang, Priority-enhanced INDI for over-actuated systems: stability and robustness analysis, Aerospace Science and Technology 173 (2026) 111624. https://doi.org/10.1016/j.ast.2026.111624.
+```
+```
+
+@article{mengPriorityenhancedINDIOveractuated2026,
+	title = {Priority-enhanced {INDI} for over-actuated systems: stability and robustness analysis},
+	volume = {173},
+	issn = {1270-9638},
+	url = {https://www.sciencedirect.com/science/article/pii/S1270963826000052},
+	doi = {10.1016/j.ast.2026.111624},
+	language = {en-US},
+	urldate = {2026-01-30},
+	journal = {Aerospace Science and Technology},
+	author = {Meng, Chaoheng and Pei, Hailong and Cheng, Zihuan and Huang, Peiye},
+	month = jun,
+	year = {2026},
+	keywords = {Robustness, Stability, Control allocation, Feedback linearization, Over-actuated systems, INDI},
+	pages = {111624},
 }
 ```
 
