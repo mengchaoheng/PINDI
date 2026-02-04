@@ -11,7 +11,7 @@ This work is part of the DFUAV project and includes:
 2. MATLAB source code for analyzing flight log files `xx.ulog`, the corresponding flight logs of the paper can be downloaded by clicking [download](https://drive.google.com/drive/folders/1Qt6lAV-oQqH-ZAz13f6aZQOPx-Y1A4mz?usp=sharing).
 
 
-The full code of PINDI can also be found in the [DFUAV project](https://github.com/mengchaoheng/DuctedFanUAV-Autopilot) (df-1.12.3 branch). The PCA algorithm depends on [control_allocation](https://github.com/mengchaoheng/control_allocation), which is used to draw attainable sets and test control allocation algorithms. The MATLAB source code for analyzing flight log files depends on [ulog_matlab_plot](https://github.com/mengchaoheng/ulog_matlab_plot), which is used to parse PX4 log files and generate plots in MATLAB.  
+The full code of PINDI can also be found in the [DFUAV project](https://github.com/mengchaoheng/DuctedFanUAV-Autopilot/tree/df-1.12.3) (df-1.12.3 branch). The PCA algorithm depends on [control_allocation](https://github.com/mengchaoheng/control_allocation), which is used to draw attainable sets and test control allocation algorithms. The MATLAB source code for analyzing flight log files depends on [PX4_ulog_plottools](https://github.com/mengchaoheng/PX4_ulog_plottools), which is used to parse PX4 log files and generate plots in MATLAB.  
 
 <p align="center">
   <img src="assets/pindi.png" width="500">
@@ -96,7 +96,7 @@ make px4_fmu-v5 upload # For the Pixhawk 4 controller
 addpath(genpath('~/Proj/control_allocation')); % Replace with your path 
 ```
 
-If you need to analyze your log, change the path of `ulog2csv` (see [ulog_matlab_plot](https://github.com/mengchaoheng/ulog_matlab_plot)):
+If you need to analyze your log, change the path of `ulog2csv` (see [PX4_ulog_plottools](https://github.com/mengchaoheng/PX4_ulog_plottools)):
 
 ```m
 ulog2csv_path = '~/Library/Python/3.9/bin/ulog2csv';
