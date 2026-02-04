@@ -22,9 +22,9 @@ The full code of PINDI can also be found in the [DFUAV project](https://github.c
 
 ## Reference
 If our repo helps your academic projects, please cite the following publication:
-```
+
 [1] C. Meng, H. Pei, Z. Cheng, P. Huang, Priority-enhanced INDI for over-actuated systems: stability and robustness analysis, Aerospace Science and Technology 173 (2026) 111624. https://doi.org/10.1016/j.ast.2026.111624.
-```
+
 ```
 
 @article{mengPriorityenhancedINDIOveractuated2026,
