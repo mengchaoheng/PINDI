@@ -32,7 +32,7 @@ param set-default USER_INDI_Y_P 12
 
 1. Noise
    
-Set the parameter IMU_GYRO_RATEMAX=250 and set the IMU parameters in Gazebo:
+Set the parameter IMU_GYRO_RATEMAX=250 and set the IMU parameters in [SDF files of ductedfan4](https://github.com/mengchaoheng/DF_gazebo/blob/ae5619cd3821529ff4a8e816a8f7c5bed311d7c0/models/ductedfan4/ductedfan4.sdf.jinja#L1209-L1220):
 
     <plugin name='gazebo_imu_plugin' filename='libgazebo_imu_plugin.so'>
       <robotNamespace></robotNamespace>
@@ -69,7 +69,7 @@ After setting up the actuator model, it has a similar filtering effect in the si
 
 In fact, this experiment is unrelated to the allocator. It belongs to the general conclusions of INDI.
 
-During the experiment, disturbances are introduced through a plugin with the following parameter settings:
+During the experiment, disturbances are introduced through a [plugin](https://github.com/mengchaoheng/DF_gazebo/blob/ae5619cd3821529ff4a8e816a8f7c5bed311d7c0/src/torque_disturbance_plugin.cpp) with the following [parameter settings](https://github.com/mengchaoheng/DF_gazebo/blob/ae5619cd3821529ff4a8e816a8f7c5bed311d7c0/models/ductedfan4/ductedfan4.sdf.jinja#L1168-L1183):
 
 ```xml
 <start_time>30.0</start_time>
