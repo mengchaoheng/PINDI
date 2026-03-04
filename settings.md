@@ -1,4 +1,5 @@
 # Experiment
+It is strongly recommended to follow the steps in the video provided in the YouTube ([simulation](https://www.youtube.com/watch?v=I5hA-lxqYqc) and [real-world flight test videos](https://www.youtube.com/watch?v=hm1Drz4iPa8)). After obtaining the data, running the related MATLAB files can reproduce the results of the paper.
 
 Experiment 1 is used to illustrate the disturbance rejection capability and the impact of parameters on PINDI performance, with a focus on actuator estimation (filtering). Experiment 2 is used to demonstrate the performance enhancement of PCA. Experiment 3 is an actual flight test used to reproduce Experiment 2.
 

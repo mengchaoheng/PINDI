@@ -48,7 +48,7 @@ If our repo helps your academic projects, please cite the following publication:
 
 
 ## Flight-controller source code
-More details can be found in `/source_code_patch/readme.md` or in the `df-1.12.3` branch of the [DFUAV project](https://github.com/mengchaoheng/DuctedFanUAV-Autopilot). This paper conducted multiple experiments, with each experiment's ulg file recording detailed contents, including code version, parameter changes, and system response. Open-source tools [flight_review](https://github.com/PX4/flight_review) can also be applied to analyze the flight logs. The detailed implementation process and parameter settings of all experiments are provided in [setting file](settings.md).
+More details can be found in `/source_code_patch/readme.md` or in the `df-1.12.3` branch of the [DFUAV project](https://github.com/mengchaoheng/DuctedFanUAV-Autopilot). This paper conducted multiple experiments, with each experiment's ulg file recording detailed contents, including code version, parameter changes, and system response. Open-source tools [flight_review](https://github.com/PX4/flight_review) can also be applied to analyze the flight logs. The detailed implementation process and parameter settings of all experiments are provided in [setting file](settings.md). It is strongly recommended to follow the steps in the video provided in the next section to perform the simulation ([simulation](https://www.youtube.com/watch?v=I5hA-lxqYqc) and [real-world flight test videos](https://www.youtube.com/watch?v=hm1Drz4iPa8)). After obtaining the data, running the related MATLAB files can reproduce the results of the paper.
 
 Compiling the code and running the software-in-the-loop simulation is straightforward:
 
@@ -58,12 +58,12 @@ git clone https://github.com/mengchaoheng/DuctedFanUAV-Autopilot.git
 cd to DuctedFanUAV-Autopilot
 ```
 
-2. Make sure you're on the `df-1.12.3` branch. You can use `git status` to check it.
+1. Make sure you're on the `df-1.12.3` branch. You can use `git status` to check it.
 ```
 git checkout df-1.12.3
 ```
 
-3. Ensure that the required submodules for loading the df-1.12.3 branch are loaded.
+1. Ensure that the required submodules for loading the df-1.12.3 branch are loaded.
 ```bash
 git submodule update --init --recursive
 ```
