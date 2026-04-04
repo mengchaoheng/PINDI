@@ -4,7 +4,7 @@ It is strongly recommended to follow the steps in the video provided in the YouT
 Experiment 1 is used to illustrate the disturbance rejection capability and the impact of parameters on PINDI performance, with a focus on actuator estimation (filtering). Experiment 2 is used to demonstrate the performance enhancement of PCA. Experiment 3 is an actual flight test used to reproduce Experiment 2.
 
 
-1.试验设置：
+1. Experiment settings:
 ```
 param set-default MC_ROLL_P 6
 param set-default MC_ROLLRATE_P 0.4
