@@ -1,0 +1,114 @@
+**Experiment 1 Reproduction Steps**
+
+**1. Gazebo model setup**
+
+Use constant control-surface effectiveness in `liftdrag_plugin.cpp`:
+
+```cpp
+// ignition::math::Vector3d lift = cl * q * this->area * liftI;
+ignition::math::Vector3d lift = 3.0 * controlAngle * liftI;
+```
+
+Enable external torque disturbance in `ductedfan4.sdf.jinja`:
+
+```xml
+<start_time>30.0</start_time>
+<running_time>150.0</running_time>
+
+<amplitude_x>0.1</amplitude_x>
+<frequency_x>0.2</frequency_x>
+<bias_x>0.</bias_x>
+
+<amplitude_y>0.1</amplitude_y>
+<frequency_y>0.4</frequency_y>
+<bias_y>0.</bias_y>
+```
+
+If `ductedfan4.sdf.jinja` is modified, remove the generated SDF and rebuild:
+
+```sh
+rm Tools/sitl_gazebo/models/ductedfan4/ductedfan4.sdf
+```
+
+**2. Initial parameters before takeoff**
+
+```sh
+param set MC_ROLL_P 6
+param set MC_ROLLRATE_P 0.4
+param set MC_ROLLRATE_I 0
+param set MC_ROLLRATE_D 0
+param set MC_ROLLRATE_FF 0
+
+param set MC_PITCH_P 6
+param set MC_PITCHRATE_P 0.4
+param set MC_PITCHRATE_I 0
+param set MC_PITCHRATE_D 0
+param set MC_PITCHRATE_FF 0
+
+param set MC_YAW_P 5
+param set MC_YAWRATE_P 0.2
+param set MC_YAWRATE_I 0
+param set MC_YAWRATE_D 0
+param set MC_YAWRATE_FF 0
+param set MC_YAW_WEIGHT 1
+
+param set USER_INDI_R_P 12
+param set USER_INDI_P_P 12
+param set USER_INDI_Y_P 12
+
+param set USER_USE_INDI 1
+param set USER_USE_U 1
+param set USER_USE_TAUI 0
+
+param set USER_ACTUATOR 1
+param set USER_TIME_CONST 0.03
+param set USER_OMEGA2F_MC 3
+
+param set USER_ADD_DIST 0
+param set IMU_GYRO_CUTOFF 0
+param set IMU_GYRO_RATEMAX 0
+param set IMU_DGYRO_CUTOFF 30
+param set USER_CS_CUTOFF 0
+param set SDLOG_PROFILE 17
+```
+
+**3. Flight procedure**
+
+Restart the simulation after setting the initial parameters.
+
+Take off and enter position-hold hover. The external torque disturbance starts at simulation time `30 s`.
+
+**4. Runtime parameter sequence**
+
+```sh
+param set USER_USE_TAUI 1
+
+param set IMU_DGYRO_CUTOFF 20
+param set IMU_DGYRO_CUTOFF 8
+
+param set USER_CS_CUTOFF 20
+param set USER_CS_CUTOFF 8
+param set USER_CS_CUTOFF 1
+
+param set USER_USE_U 0
+```
+
+Then restore the final tuned values:
+
+```sh
+param set USER_USE_U 1
+param set USER_CS_CUTOFF 10
+param set IMU_DGYRO_CUTOFF 10
+```
+
+For the exact old sweep, include:
+
+```sh
+param set IMU_DGYRO_CUTOFF 10
+```
+
+between `20` and `8`, i.e. `30 -> 20 -> 10 -> 8`.
+
+**5. Landing**
+
+After restoring the final tuned values and collecting enough hover data, switch back to a safe position-hold state if needed, then land normally.

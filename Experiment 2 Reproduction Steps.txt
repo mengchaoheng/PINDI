@@ -1,0 +1,156 @@
+**Experiment 2 Reproduction Steps**
+
+Experiment 2 is the **servo-disturbance yaw square-reference test**.  
+It compares the allocation methods under the same constant control-surface disturbance.
+
+**1. Model setup**
+
+Disable the external torque disturbance used in Experiment 1:
+
+```xml
+<running_time>0.0</running_time>
+<amplitude_x>0.0</amplitude_x>
+<amplitude_y>0.0</amplitude_y>
+```
+
+Keep the control-surface effectiveness aligned with the old experiment:
+
+```cpp
+// ignition::math::Vector3d lift = cl * q * this->area * liftI;
+ignition::math::Vector3d lift = 3.0 * controlAngle * liftI;
+```
+
+If the SDF template is modified, remove the generated SDF and rebuild:
+
+```sh
+rm Tools/sitl_gazebo/models/ductedfan4/ductedfan4.sdf
+```
+
+**2. Initial parameters**
+
+```sh
+param set MC_ROLL_P 6
+param set MC_ROLLRATE_P 0.4
+param set MC_ROLLRATE_I 0
+param set MC_ROLLRATE_D 0
+param set MC_ROLLRATE_FF 0
+
+param set MC_PITCH_P 6
+param set MC_PITCHRATE_P 0.4
+param set MC_PITCHRATE_I 0
+param set MC_PITCHRATE_D 0
+param set MC_PITCHRATE_FF 0
+
+param set MC_YAW_P 5
+param set MC_YAWRATE_P 0.2
+param set MC_YAWRATE_I 0
+param set MC_YAWRATE_D 0
+param set MC_YAWRATE_FF 0
+param set MC_YAW_WEIGHT 1
+
+param set USER_INDI_R_P 12
+param set USER_INDI_P_P 12
+param set USER_INDI_Y_P 12
+
+param set USER_USE_INDI 1
+param set USER_USE_U 1
+param set USER_USE_TAUI 1
+
+param set USER_ACTUATOR 1
+param set USER_TIME_CONST 0.03
+param set USER_OMEGA2F_MC 3
+
+param set IMU_GYRO_CUTOFF 0
+param set IMU_GYRO_RATEMAX 0
+param set IMU_DGYRO_CUTOFF 10
+param set USER_CS_CUTOFF 10
+
+param set USER_DIST_MAG 0.139626
+param set USER_ADD_DIST 0
+param set USER_ADD_REF 0
+param set USER_STEP_TIME 2
+param set USER_TEST_NUM 1
+param set SDLOG_PROFILE 17
+```
+
+`USER_TEST_NUM=1` is enough for this reproduction because each allocation method is tested once.  
+For repeated statistical tests, set:
+
+```sh
+param set USER_TEST_NUM 100
+```
+
+**3. Restart and take off**
+
+Restart the simulation after setting the initial parameters.
+
+Take off and enter hover/Loiter.
+
+**4. Enable servo disturbance**
+
+```sh
+param set USER_ADD_DIST 1
+```
+
+This applies the legacy ductedfan4 disturbance pattern with magnitude:
+
+```text
+USER_DIST_MAG = 0.139626 rad ≈ 8 deg
+```
+
+**5. Run each allocation method**
+
+For each method, set `USER_AC_METHOD`, then start one yaw square-reference test with `USER_ADD_REF=1`. Wait until `STEP #1 DONE`, then stop the reference and switch to the next method.
+
+**INV**
+
+```sh
+param set USER_AC_METHOD 0
+param set USER_ADD_REF 1
+# wait for STEP #1 DONE
+param set USER_ADD_REF 0
+```
+
+**WLS**
+
+```sh
+param set USER_AC_METHOD 1
+param set USER_ADD_REF 1
+# wait for STEP #1 DONE
+param set USER_ADD_REF 0
+```
+
+**DIR**
+
+```sh
+param set USER_AC_METHOD 2
+param set USER_ADD_REF 1
+# wait for STEP #1 DONE
+param set USER_ADD_REF 0
+```
+
+**PINDI / PCA**
+
+```sh
+param set USER_AC_METHOD 3
+param set USER_ADD_REF 1
+# wait for STEP #1 DONE
+param set USER_ADD_REF 0
+```
+
+The yaw reference is:
+
+```text
+yaw0 -> yaw0 + pi/4 -> yaw0 - pi/4 -> yaw0
+```
+
+with `USER_STEP_TIME=2`.
+
+**6. Stop disturbance and land**
+
+```sh
+param set USER_ADD_DIST 0
+param set USER_ADD_REF 0
+```
+
+Then land normally.
