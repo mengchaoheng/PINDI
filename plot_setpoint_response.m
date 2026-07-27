@@ -27,7 +27,7 @@ r2d=180/pi;
 %------------------------------------------
 % Set ULog relative path
 %------------------------------------------
-ulgFileName = 'data/02_24_44';
+ulgFileName = 'data/06_54_46';
 tmp = [ulgFileName '.mat'];
 
 % Record the current main script path

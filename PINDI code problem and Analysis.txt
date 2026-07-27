@@ -1,0 +1,132 @@
+PINDI Code Problems and Analysis
+================================
+
+Scope
+-----
+
+The actuator-feedback chain considered here is:
+
+    control allocation u
+      -> final command u_ultimate
+      -> actuator estimate
+      -> low-pass output delta
+      -> INDI feedback
+
+
+Available Material
+------------------
+
+1. The relevant source code is available in the current branch
+   retest_rate_INDI. It is based on commit
+   ad19ed32ef12db8b61af25035ae5fcb6b3393dae of df-1.12.3.
+
+2. data/log_52_2026-7-25-15-45-54.ulg is available. This single log contains
+   an INDI engagement before the fix and another INDI engagement after the fix.
+
+3. data/log_53_2026-7-25-15-48-12 contains the original actuator-feedback
+   chain, with USER_CHAIN_FIX=0.
+
+4. data/log_54_2026-7-25-15-48-54 contains the corrected
+   actuator-feedback chain, with USER_CHAIN_FIX=1.
+
+5. data/07_12_00 contains the corrected SITL low-cutoff-frequency test.
+
+
+Problems Found
+--------------
+
+1. The actuator estimate was not recursive when USER_ACTUATOR=0.
+
+   The original update was effectively:
+
+       estimate(k) = a*u(k-1) + (1-a)*u(k)
+       a = exp(-dt/T)
+
+   It used the preceding command u(k-1), rather than the preceding actuator
+   state estimate(k-1). Therefore, USER_TIME_CONST=0.03 s did not produce a
+   recursive first-order actuator model. It only blended two adjacent control
+   commands.
+
+   The corrected update is:
+
+       estimate(k) = a*estimate(k-1) + (1-a)*u(k)
+
+2. LowPassFilter2p was repeatedly reset on the FMU.
+
+   The controller publication rate was approximately 799 Hz. The mixer mainly
+   alternated between approximately 800 Hz and 400 Hz, with an average rate of
+   approximately 666 Hz.
+
+   In the original implementation, a change in the measured sample frequency
+   caused the filter coefficients and filter state to be reset. Frequent sample
+   frequency changes therefore repeatedly erased the low-pass filter memory.
+
+   The corrected implementation preserves the filter state when the update
+   period changes.
+
+3. Positive cutoff frequencies below 5 Hz were limited to 5 Hz in the original
+   PX4 LowPassFilter2p path.
+
+   Consequently, requesting 1, 0.5, or 0.3 Hz did not produce the requested
+   cutoff frequency before the lower-limit fix.
+
+   Very low cutoff frequencies can also increase the numerical error of a
+   single-precision Direct Form II implementation. Numerical error must be
+   distinguished from normal low-pass attenuation.
+
+
+Analysis Scripts
+----------------
+
+flot_filter.m
+    Plots the logged control allocation u, final command u_ultimate, actuator
+    estimate, and filtered INDI feedback delta.
+
+    Default log:
+        data/log_54_2026-7-25-15-48-54
+
+    This script is intended for direct inspection of the corrected online
+    actuator-feedback chain.
+
+flot_timing.m
+    Measures the controller rate, mixer rate, long-period ratio, sample
+    frequency changes, and filter reset count from allocation_value.
+
+    Default log:
+        data/log_54_2026-7-25-15-48-54
+
+    The corrected log reports zero filter resets.
+
+test5_2_1_1_replay.m
+    Replots the corrected Experiment 1.1 SITL results, including attitude,
+    angular rate, angular acceleration, control input, and position response at
+    different cutoff frequencies.
+
+    Default log:
+        data/07_12_00
+
+    The log uses a 250 Hz update rate and contains the tested cutoff frequencies
+    20, 8, 5, 1, 0.5, and 0.3 Hz.
+
+    Optional corrected output names:
+
+        Figure_9_fix.pdf
+        states_with_noise_fix.png
+        Figure_10_fix.pdf
+        control_with_noise_fix.png
+        Figure_11_fix.pdf
+        noise_test_position_fix.png
+
+    The PlotToFileColorPDF and PlotToFileColorPNG calls remain commented out.
+    Uncomment them only when exported files are required.
+
+Filter_and_Servo/LowPassFilter2p.m
+    Tests the PX4 two-pole low-pass filter numerically at the 250 Hz update rate
+    measured in data/07_12_00.
+
+    It compares the original 5 Hz lower limit, the requested low cutoff
+    frequencies, and single- versus double-precision Direct Form II behavior.
+    This script does not read a flight log directly.
+
+
+

@@ -107,6 +107,7 @@ ulog2csv_path = '~/Library/Python/3.9/bin/ulog2csv';
 * compare_ca.m -> Figure_2
 * df4_vview.m -> Figure_6
 * test5_2_1_1.m -> Figure_9-Figure_11
+* test5_2_1_1_replay.m -> corrected Figure_9-Figure_11
 * test5_2_2.m -> Figure_14-Figure_16
 * test5_2_2RMS.m -> Figure_17
 * test5_2_1_2.m -> Figure_12
@@ -267,5 +268,41 @@ Similar to the analysis in sections 5.2.2 and 5.3 of the paper, we present the f
 <p align="center">
   <em>
   Figure 16*.  Position response under different control schemes (rate loop alone).
+  </em>
+</p>
+
+## Additional validation with corrected low-pass cutoff frequencies
+
+After correcting the low-pass cutoff-frequency setting, the updated results
+corresponding to Figures 9--11 still support the original conclusion that a
+cutoff-frequency mismatch between the INDI input and output signals does not
+cause a major problem. See
+[PINDI code problem and Analysis.txt](<PINDI code problem and Analysis.txt>)
+for details.
+
+<p align="center">
+  <img src="assets/states_with_noise_fix.png" width="900">
+</p>
+<p align="center">
+  <em>
+  Figure 9*. Corrected results corresponding to Figure 9.
+  </em>
+</p>
+
+<p align="center">
+  <img src="assets/control_with_noise_fix.png" width="900">
+</p>
+<p align="center">
+  <em>
+  Figure 10*. Corrected results corresponding to Figure 10.
+  </em>
+</p>
+
+<p align="center">
+  <img src="assets/noise_test_position_fix.png" width="700">
+</p>
+<p align="center">
+  <em>
+  Figure 11*. Corrected results corresponding to Figure 11.
   </em>
 </p>
